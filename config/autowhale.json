@@ -4,7 +4,7 @@
   "noon": true,
   "night": true,
   "autoComment": false,
-  "mentionName": "",
+  "mentionName": "一只深沉",
   "commentPerRound": 1,
   "transcribe": false,
   "asrModel": "small",
