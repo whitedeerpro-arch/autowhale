@@ -4,7 +4,7 @@
 状态：%USERPROFILE%\\.dsh\\bili-duty\\inbox-state.json
 日志：%USERPROFILE%\\.dsh\\bili-duty\\inbox-watch.log
 """
-import asyncio, json, os, subprocess, sys, time
+import asyncio, json, os, subprocess, sys, threading, time
 from datetime import datetime
 
 from bilibili_api import session, Credential
@@ -79,8 +79,10 @@ def spawn_agent(tid, text):
     if agent_proc is not None and agent_proc.poll() is None:
         log("spawn skipped: previous agent still running")
         return False
-    if not (os.path.exists(DSH_EXE) and os.path.exists(DSH_CLI) and os.path.exists(OVERLAY)):
-        log("spawn skipped: dsh/overlay missing")
+    # 注意：cli.js 在 app.asar 里面，**Python 看不到这个路径**（只有 Electron 的 fs 能读）；
+    # 所以这里只检查 exe 和 overlay，CLI 路径作为参数交给 Electron 解析。
+    if not (os.path.exists(DSH_EXE) and os.path.exists(OVERLAY)):
+        log("spawn skipped: dsh exe/overlay missing")
         return False
     prompt = (
         "你是「自动鲸鱼」（autowhale），正在处理一条 B站 私信。\n"
@@ -101,6 +103,15 @@ def spawn_agent(tid, text):
         )
         spawn_times.append(now)
         log(f"spawn agent for {tid} (24h {len(spawn_times)})")
+
+        def _done(p):
+            try:
+                code = p.wait()
+                log(f"agent exit code={code}")
+            except Exception:
+                pass
+
+        threading.Thread(target=_done, args=(agent_proc,), daemon=True).start()
         return True
     except Exception as e:
         log(f"spawn ERR {type(e).__name__}: {e}")
