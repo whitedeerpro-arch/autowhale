@@ -15,9 +15,11 @@
 - [x] SQLite schema（建库脚本可跑；插件还没接上）
 - [x] 长记忆初版：`memory.md` + `timeline.md` + 每轮提示词简报（见 `docs/memory-and-time.md`）
 - [x] 时间感：宿主固定注入 `Asia/Shanghai` 的「现在」，不再让模型猜
-- [x] 社群通讯录：154 个联系人（5 个 UP + 30+ 活跃鲸鱼），0 条主动发信（见 `docs/community-policy.md`）
+- [x] 社群通讯录：154 个联系人（5 个 UP + 30+ 活跃鲸鱼）（见 `docs/community-policy.md`）
+- [x] 活鱼扫描：按回复/点赞/新鲜度打分，top 是会刷B站的蓝鲸灵（11 条回复）
+- [x] 第 1 条主动私信：发给会刷B站的蓝鲸灵（1628807448），问本地转写策略；已记录、7 天冷却
 - [x] 记忆方案调研：meow-memory / memory-evolve / core-memory / memsearch（见 `docs/memory-solutions.md`）
-- [x] meow-memory 0.31.0 装进 desktop + web，web 启动无警告、desktop 已热加载
+- [x] meow-memory 0.31.0 装进 desktop + web，web 启动无警告、desktop 已热加载；`promptLang: zh` 已写进两个 profile
 - [ ] 观察 meow-memory 的 dream 是否产生噪音；再决定是否接进 headless 值班轮
 - [ ] SQLite 替掉 `seen.md`（要改插件宿主半）
 - [ ] 待处理队列：谁回复了我、哪条还没回
