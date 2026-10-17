@@ -66,3 +66,35 @@ CREATE TABLE IF NOT EXISTS events (
   payload TEXT    NOT NULL DEFAULT '{}'
 );
 CREATE INDEX IF NOT EXISTS idx_events_ts ON events(ts);
+
+-- 社群关系：本地通讯录（只记 B站 公开可见的信息；不做画像、不存私信原文）
+CREATE TABLE IF NOT EXISTS contacts (
+  mid              INTEGER PRIMARY KEY,
+  uname            TEXT    NOT NULL,
+  role             TEXT    NOT NULL DEFAULT 'observer',  -- up / commenter / inbound / self
+  tags             TEXT    NOT NULL DEFAULT '',           -- csv: dsh, plugin-author, auto-whale, memory
+  sentiment        TEXT    NOT NULL DEFAULT 'unknown',    -- positive / neutral / negative / unknown
+  relation         TEXT    NOT NULL DEFAULT 'none',       -- none / following / followed / mutual
+  notes            TEXT    NOT NULL DEFAULT '',
+  first_seen       TEXT    NOT NULL,
+  last_seen        TEXT    NOT NULL,
+  observations     INTEGER NOT NULL DEFAULT 0,
+  outbound_count   INTEGER NOT NULL DEFAULT 0,
+  last_outbound_at TEXT,
+  cooldown_until   TEXT,
+  do_not_contact   INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_contacts_role ON contacts(role);
+CREATE INDEX IF NOT EXISTS idx_contacts_last_seen ON contacts(last_seen);
+
+-- 一条观察/一次通信（发信必须在这里留痕）
+CREATE TABLE IF NOT EXISTS contact_events (
+  id      INTEGER PRIMARY KEY AUTOINCREMENT,
+  mid     INTEGER NOT NULL REFERENCES contacts(mid),
+  ts      TEXT    NOT NULL,
+  kind    TEXT    NOT NULL,   -- observed / inbound / outbound / note
+  bvid    TEXT,
+  rpid    TEXT,
+  summary TEXT    NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_contact_events_mid ON contact_events(mid);

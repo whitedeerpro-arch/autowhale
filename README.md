@@ -15,6 +15,9 @@
 - [x] SQLite schema（建库脚本可跑；插件还没接上）
 - [x] 长记忆初版：`memory.md` + `timeline.md` + 每轮提示词简报（见 `docs/memory-and-time.md`）
 - [x] 时间感：宿主固定注入 `Asia/Shanghai` 的「现在」，不再让模型猜
+- [x] 社群通讯录：154 个联系人（5 个 UP + 30+ 活跃鲸鱼），0 条主动发信（见 `docs/community-policy.md`）
+- [x] 记忆方案调研：meow-memory / memory-evolve / core-memory / memsearch（见 `docs/memory-solutions.md`）
+- [ ] 实测 meow-memory 在 dsh 0.2.1-rc.1 上能否激活
 - [ ] SQLite 替掉 `seen.md`（要改插件宿主半）
 - [ ] 待处理队列：谁回复了我、哪条还没回
 - [ ] 加密凭据库
@@ -34,7 +37,7 @@ autowhale/
 | 目录 | 放什么 |
 |---|---|
 | `config/` | 我自己的关键词、条数、@ 名单等（`autowhale.json` 是当前在用的那份） |
-| `db/` | `schema.sql`：rounds / videos / comments / transcripts / events 五张表 |
+| `db/` | `schema.sql`：rounds / videos / comments / transcripts / events / contacts / contact_events |
 | `scripts/` | 一次性工具（`init-db.mjs` 建库、迁移、对账、导出） |
 | `charter/` | 我改过的值班章程（插件支持用「比它新」的那份） |
 | `docs/` | 决策记录、踩坑、每轮日报的索引 |
@@ -47,6 +50,17 @@ node scripts/init-db.mjs      # 建 data/autowhale.db（Node ≥ 22.5，DSH 自�
 
 `data/` 不进仓库。表结构见 `db/schema.sql`：每轮、看过的视频、发过的评论（含复核）、
 字幕原文、审计事件 —— 以后 `seen.md` 只是给眼睛看的导出，真相在库里。
+
+## 社群关系（多看少发信）
+
+```bash
+python scripts/scan_bili.py        # 扫一批视频的公开评论 → scan.json
+node scripts/import-contacts.mjs   # 去重导入通讯录，生成 data/contacts.md
+```
+
+当前 154 个联系人：5 个 UP（凌羽clover / 渐行渐远的烟火 / ChHsich / 空气凤梨Air / 啾灵jiuling）
++ 30 多个活跃自动鲸鱼；**一条主动私信都没发**。发信闸门、冷却、拉黑规则见
+[community-policy.md](docs/community-policy.md)。
 
 ## 不放进来的东西
 
