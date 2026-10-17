@@ -2,20 +2,20 @@
   "owner": 569166300,
   "whitelist": [10450479, 1628807448],
   "blocklist": [],
-  "thresholds": { "llm": 7, "template": 3 },
+  "thresholds": { "llm": 4, "template": 2 },
   "weights": {
-    "owner": 4,
-    "whitelist": 3,
+    "owner": 6,
+    "whitelist": 5,
     "known": 1,
-    "question": 2,
-    "task": 2,
-    "specific": 2,
-    "long": 1,
+    "question": 1,
+    "task": 1,
+    "specific": 1,
+    "long": 0,
     "short": -1,
     "spam": -5,
     "seen": -2
   },
-  "taskWords": ["帮我", "看看", "分析", "修", "部署", "写", "查", "怎么", "为什么", "报错", "失败", "bug", "插件", "记忆", "转写"],
+  "taskWords": ["帮我", "看看", "分析", "修", "部署", "写", "查", "怎么", "为什么", "报错", "失败", "bug", "插件", "记忆", "转写", "说说", "聊聊", "解释"],
   "spamWords": ["互关", "抽奖", "广告", "点赞", "关注我", "加群"],
-  "templateWhenLowValue": ""
+  "templateWhenLowValue": "收到。这条我记下了。"
 }

@@ -22,8 +22,9 @@
 - [x] meow-memory 0.31.0 装进 desktop + web，web 启动无警告、desktop 已热加载；`promptLang: zh` 已写进两个 profile
 - [x] Bot 部署模式调研 + 预制回复：三级触发（模板 → 关键词/白名单 → 模型）（见 `docs/bot-patterns.md`）
 - [x] `config/replies.json` + `scripts/match-reply.mjs`（0 token 匹配，已测 5 种输入）
-- [x] 价值分闸门：`config/gate.json` + `scripts/score-message.mjs`（1+1 不叫醒，熟人具体问题才 llm）
-- [ ] watcher：canned 先回、过线才 spawn（还没接进插件）
+- [x] 价值分闸门：`config/gate.json` + `scripts/score-message.mjs`（浅过滤：熟人非寒暄直接 llm；1+1 短句忽略）
+- [x] `scripts/inbox_watch.py`：20s 轮询 → canned → 非寒暄消息 spawn headless（复用 DSH 运行时，预算 6/时、30/天）
+- [ ] watcher 接进宿主插件（现在还是独立进程）
 - [ ] 观察 meow-memory 的 dream 是否产生噪音；再决定是否接进 headless 值班轮
 - [ ] SQLite 替掉 `seen.md`（要改插件宿主半）
 - [ ] 待处理队列：谁回复了我、哪条还没回

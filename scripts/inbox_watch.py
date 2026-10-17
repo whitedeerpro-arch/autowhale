@@ -4,7 +4,7 @@
 状态：%USERPROFILE%\\.dsh\\bili-duty\\inbox-state.json
 日志：%USERPROFILE%\\.dsh\\bili-duty\\inbox-watch.log
 """
-import asyncio, json, os, sys
+import asyncio, json, os, subprocess, sys, time
 from datetime import datetime
 
 from bilibili_api import session, Credential
@@ -13,8 +13,20 @@ HOME = os.path.join(os.path.expanduser("~"), ".dsh", "bili-duty")
 CRED = os.path.join(HOME, "bili_credential.json")
 STATE = os.path.join(HOME, "inbox-state.json")
 LOG = os.path.join(HOME, "inbox-watch.log")
+AGENT_LOG = os.path.join(HOME, "agent-spawn.log")
 WHITELIST = {10450479}
 ME = 569166300
+
+# 高价值 → 复用 DSH 自己的 headless 运行时，不另造网关
+DSH_EXE = r"D:\Application\Deepseek Harness\DeepSeek Harness.exe"
+DSH_CLI = r"D:\Application\Deepseek Harness\resources\app.asar\dsh\node_modules\@deepseek-ai\dsh-desktop-host\lib\cli.js"
+OVERLAY = os.path.join(HOME, "headless-overlay.yml")
+SPAWN_PER_HOUR = 6
+SPAWN_PER_DAY = 30
+
+agent_proc = None
+spawn_times = []
+
 
 c = json.load(open(CRED, encoding="utf-8"))
 cred = Credential(sessdata=c["sessdata"], bili_jct=c["bili_jct"], buvid3=c.get("buvid3", ""), dedeuserid=c["dedeuserid"])
@@ -37,15 +49,62 @@ def txt(raw):
         return str(raw)[:120]
 
 
-def canned(text):
+SPAM = ("抽奖", "互关", "广告", "点赞", "关注我", "加群", "刷单")
+
+
+def classify(text):
+    """浅过滤：只挡明显垃圾；熟人非寒暄就走模型。"""
+    if any(k in text for k in SPAM):
+        return None, False
     if any(k in text for k in ("在吗", "在么", "在不在")):
-        return "在。本鲸在值班，有事直接说。"
+        return "在。本鲸在值班，有事直接说。", False
     if any(k in text for k in ("唤起", "hihi", "hi", "你好", "hello")):
-        return "在，被你叫起来了。有事直接说。"
-    # 需要动脑的消息：别假装看懂了，先给一条诚实的占位
-    if len(text) >= 12 or any(k in text for k in ("？", "?", "怎么", "为什么", "哪些", "如何", "帮我", "报错", "失败", "一下", "能不能")):
-        return "收到。这条要动脑子，我处理完回你。"
-    return "收到，本鲸看到了。"
+        return "在，被你叫起来了。有事直接说。", False
+    if len(text) >= 6 or any(k in text for k in ("？", "?", "怎么", "为什么", "哪些", "如何", "帮我", "报错", "失败", "一下", "能不能", "说说", "聊聊", "解释")):
+        return "收到。这条要动脑子，我处理完回你。", True
+    return "收到，本鲸看到了。", False
+
+
+def spawn_agent(tid, text):
+    """复用 dsh --profile headless 跑一轮，让它读 memory.md 并回私信。"""
+    global agent_proc
+    now = time.time()
+    spawn_times[:] = [t for t in spawn_times if now - t < 86400]
+    if sum(1 for t in spawn_times if now - t < 3600) >= SPAWN_PER_HOUR:
+        log("spawn skipped: hourly budget")
+        return False
+    if len(spawn_times) >= SPAWN_PER_DAY:
+        log("spawn skipped: daily budget")
+        return False
+    if agent_proc is not None and agent_proc.poll() is None:
+        log("spawn skipped: previous agent still running")
+        return False
+    if not (os.path.exists(DSH_EXE) and os.path.exists(DSH_CLI) and os.path.exists(OVERLAY)):
+        log("spawn skipped: dsh/overlay missing")
+        return False
+    prompt = (
+        "你是「自动鲸鱼」（autowhale），正在处理一条 B站 私信。\n"
+        f"发件人：一只深沉（UID {tid}，主人的另一个号）\n"
+        f"消息：{text}\n\n"
+        f"要求：\n1. 先读 {HOME}\\memory.md 和 {HOME}\\duty.md，按里面的人设与红线来。\n"
+        "2. 这是私信对话，不是值班轮：不要搜视频、不要发评论、不要跑整轮。\n"
+        f"3. 用 mcp__bili-duty__bili_send_message 给 {tid} 回一条（最多一条，150 字内）；拿不准就回「收到，我看过了」。\n"
+        "4. 语气可以带鲸鱼娘，但别演过头；不透露路径、账号、聊天内容。\n"
+    )
+    env = dict(os.environ, ELECTRON_RUN_AS_NODE="1", PYTHONUTF8="1", PYTHONIOENCODING="utf-8", BILI_DUTY_HOME=HOME)
+    try:
+        fh = open(AGENT_LOG, "a", encoding="utf-8")
+        agent_proc = subprocess.Popen(
+            [DSH_EXE, "--expose-internals", DSH_CLI, "--profile", "headless", "--patch", OVERLAY, prompt],
+            cwd=HOME, env=env, stdout=fh, stderr=subprocess.STDOUT,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
+        spawn_times.append(now)
+        log(f"spawn agent for {tid} (24h {len(spawn_times)})")
+        return True
+    except Exception as e:
+        log(f"spawn ERR {type(e).__name__}: {e}")
+        return False
 
 
 def load_state():
@@ -84,14 +143,20 @@ async def tick(state, init=False):
             state[str(tid)] = key
             continue
         text = txt(inbound.get("content"))
-        reply = canned(text)
-        try:
-            out = await session.send_msg(credential=cred, receiver_id=tid, msg_type=session.EventType.TEXT, content=reply)
-            state[str(tid)] = out.get("msg_key", key)
-            log(f"reply -> {tid}: {reply}  (to: {text[:60]})")
-        except Exception as e:
+        reply, want_agent = classify(text)
+        if reply:
+            try:
+                out = await session.send_msg(credential=cred, receiver_id=tid, msg_type=session.EventType.TEXT, content=reply)
+                state[str(tid)] = out.get("msg_key", key)
+                log(f"reply -> {tid}: {reply}  (to: {text[:60]})")
+            except Exception as e:
+                state[str(tid)] = key
+                log(f"send ERR {tid}: {type(e).__name__} {e}")
+        else:
             state[str(tid)] = key
-            log(f"send ERR {tid}: {type(e).__name__} {e}")
+            log(f"ignore -> {tid}: {text[:60]}")
+        if want_agent:
+            spawn_agent(tid, text)
     save_state(state)
 
 

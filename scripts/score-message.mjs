@@ -49,10 +49,12 @@ if (gate.spamWords.some((x) => text.includes(x))) { score += w.spam; reasons.pus
 
 const c = canned(text)
 const trusted = from === gate.owner || gate.whitelist.includes(from)
+const trivial = text.length <= 4 && !/[?？]/.test(text) && !gate.taskWords.some((x) => text.includes(x))
 let decision
 if (c?.action === 'ignore') decision = 'ignore'
 else if (c?.action === 'status') decision = 'status'
 else if (c?.reply) decision = 'canned'
+else if (trivial) decision = 'ignore'
 else if (c?.action === 'llm' && (trusted || score >= gate.thresholds.llm)) decision = 'llm'
 else if (score >= gate.thresholds.llm) decision = 'llm'
 else if (score >= gate.thresholds.template && gate.templateWhenLowValue) decision = 'template'
