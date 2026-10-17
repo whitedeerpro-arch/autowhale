@@ -1,0 +1,25 @@
+# 运行产物 / 测试脚本（含会话导出，不公开）
+bili-test/
+dsh-bili-scroll/
+out/
+*.log
+
+# 依赖与环境
+node_modules/
+.venv/
+.venv-*/
+__pycache__/
+*.pyc
+
+# 凭证（永远不要提交）
+.env
+.env.*
+secrets*
+*.key
+*.pem
+bili_credential.json
+
+# 系统杂项
+.DS_Store
+Thumbs.db
+desktop.ini
