@@ -4,7 +4,7 @@
 状态：%USERPROFILE%\\.dsh\\bili-duty\\inbox-state.json
 日志：%USERPROFILE%\\.dsh\\bili-duty\\inbox-watch.log
 """
-import asyncio, json, os, subprocess, sys, threading, time
+import asyncio, json, os, sys, time, urllib.request
 from datetime import datetime
 
 from bilibili_api import session, Credential
@@ -17,14 +17,11 @@ AGENT_LOG = os.path.join(HOME, "agent-spawn.log")
 WHITELIST = {10450479}
 ME = 569166300
 
-# 高价值 → 复用 DSH 自己的 headless 运行时，不另造网关
-DSH_EXE = r"D:\Application\Deepseek Harness\DeepSeek Harness.exe"
-DSH_CLI = r"D:\Application\Deepseek Harness\resources\app.asar\dsh\node_modules\@deepseek-ai\dsh-desktop-host\lib\cli.js"
-OVERLAY = os.path.join(HOME, "headless-overlay.yml")
+# 高价值 → 让**宿主插件**代跑（宿主不受沙箱限制）
+WEB_PORT_FILE = os.path.join(HOME, "web-port.txt")
 SPAWN_PER_HOUR = 6
 SPAWN_PER_DAY = 30
 
-agent_proc = None
 spawn_times = []
 
 
@@ -66,8 +63,7 @@ def classify(text):
 
 
 def spawn_agent(tid, text):
-    """复用 dsh --profile headless 跑一轮，让它读 memory.md 并回私信。"""
-    global agent_proc
+    """让宿主插件代跑一轮：POST /api/bili-duty/dm-reply（宿主不受沙箱限制）。"""
     now = time.time()
     spawn_times[:] = [t for t in spawn_times if now - t < 86400]
     if sum(1 for t in spawn_times if now - t < 3600) >= SPAWN_PER_HOUR:
@@ -76,42 +72,25 @@ def spawn_agent(tid, text):
     if len(spawn_times) >= SPAWN_PER_DAY:
         log("spawn skipped: daily budget")
         return False
-    if agent_proc is not None and agent_proc.poll() is None:
-        log("spawn skipped: previous agent still running")
-        return False
-    # 注意：cli.js 在 app.asar 里面，**Python 看不到这个路径**（只有 Electron 的 fs 能读）；
-    # 所以这里只检查 exe 和 overlay，CLI 路径作为参数交给 Electron 解析。
-    if not (os.path.exists(DSH_EXE) and os.path.exists(OVERLAY)):
-        log("spawn skipped: dsh exe/overlay missing")
-        return False
-    prompt = (
-        "你是「自动鲸鱼」（autowhale），正在处理一条 B站 私信。\n"
-        f"发件人：一只深沉（UID {tid}，主人的另一个号）\n"
-        f"消息：{text}\n\n"
-        f"要求：\n1. 先读 {HOME}\\memory.md 和 {HOME}\\duty.md，按里面的人设与红线来。\n"
-        "2. 这是私信对话，不是值班轮：不要搜视频、不要发评论、不要跑整轮。\n"
-        f"3. 用 mcp__bili-duty__bili_send_message 给 {tid} 回一条（最多一条，150 字内）；拿不准就回「收到，我看过了」。\n"
-        "4. 语气可以带鲸鱼娘，但别演过头；不透露路径、账号、聊天内容。\n"
-    )
-    env = dict(os.environ, ELECTRON_RUN_AS_NODE="1", PYTHONUTF8="1", PYTHONIOENCODING="utf-8", BILI_DUTY_HOME=HOME)
     try:
-        fh = open(AGENT_LOG, "a", encoding="utf-8")
-        agent_proc = subprocess.Popen(
-            [DSH_EXE, "--expose-internals", DSH_CLI, "--profile", "headless", "--patch", OVERLAY, prompt],
-            cwd=HOME, env=env, stdout=fh, stderr=subprocess.STDOUT,
-            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-        )
+        port = int(open(WEB_PORT_FILE, encoding="utf-8").read().strip())
+    except Exception:
+        log("spawn skipped: web-port.txt missing (插件没重启？)")
+        return False
+    body = json.dumps({"tid": tid, "text": text}, ensure_ascii=False).encode("utf-8")
+    req = urllib.request.Request(
+        f"http://127.0.0.1:{port}/api/bili-duty/dm-reply",
+        data=body, method="POST",
+        headers={"Content-Type": "application/json; charset=utf-8"},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+        if data.get("busy") or data.get("started") is False:
+            log(f"spawn skipped: host busy/rejected {json.dumps(data, ensure_ascii=False)}")
+            return False
         spawn_times.append(now)
-        log(f"spawn agent for {tid} (24h {len(spawn_times)})")
-
-        def _done(p):
-            try:
-                code = p.wait()
-                log(f"agent exit code={code}")
-            except Exception:
-                pass
-
-        threading.Thread(target=_done, args=(agent_proc,), daemon=True).start()
+        log(f"spawn agent via host for {tid} (24h {len(spawn_times)})")
         return True
     except Exception as e:
         log(f"spawn ERR {type(e).__name__}: {e}")
@@ -189,4 +168,10 @@ async def main():
         await asyncio.sleep(20)
 
 
-asyncio.run(main())
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except BaseException:
+        import traceback
+        log("FATAL\n" + traceback.format_exc())
+
