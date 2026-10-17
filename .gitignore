@@ -26,3 +26,7 @@ desktop.ini
 
 data/
 
+
+# meow-memory 本地记忆库
+.dsh-meow/
+

@@ -31,9 +31,14 @@ B站上的实测/讲解：
 - **本项目自有数据**（轮次、判重、评论、联系人）：继续用 `data/autowhale.db`，
   不塞进通用记忆插件 —— 两类数据职责不同，混在一起以后不好查。
 
-## 部署顺序
+## 部署结果（2026-10-17）
 
-1. `dsh plugin --profile web add github:Phant0Meow/dsh-meow-memory`（测试 profile，重启 web 看有没有激活警告）
-2. 通过后同样装进 `desktop`，重启
-3. 设置 `promptLang: zh`，`projectDir` 指到插件家（`~/.dsh/bili-duty`）
-4. 观察一周：dream 是否把「今天刷了什么」记成噪音；再决定要不要保留
+- [x] `dsh plugin --profile web add meow-memory`（0.31.0，npm）
+- [x] 起 `web --port 59803` 验证：**无激活警告**，进程正常监听
+- [x] 同样装进 `desktop` profile；装完宿主**热加载**，本会话已经出现 `memory_remember/search/project` 等工具
+- [x] 已写入第一批记忆：项目 autowhale、部署路径、用户偏好、`config.json` 不生效的教训、记忆分层决策、选型结论、社群观察状态
+- [ ] `promptLang` 显式设 `zh`（默认已是，先观察）
+- [ ] 观察一周：dream 是否把「今天刷了什么」记成噪音；再决定要不要保留
+
+注意：`meow-memory` 的记忆库按工作区落在 `.dsh-meow/memory.db`（本仓库已 gitignore），
+和 `data/autowhale.db` 是两套 —— 前者是跨会话对话记忆，后者是值班业务账本。
