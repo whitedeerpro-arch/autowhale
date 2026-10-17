@@ -23,3 +23,6 @@ bili_credential.json
 .DS_Store
 Thumbs.db
 desktop.ini
+
+data/
+

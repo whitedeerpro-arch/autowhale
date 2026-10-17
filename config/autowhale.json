@@ -1,0 +1,15 @@
+{
+  "perDay": 3,
+  "peakValley": false,
+  "noon": true,
+  "night": true,
+  "autoComment": false,
+  "mentionName": "",
+  "commentPerRound": 1,
+  "transcribe": false,
+  "asrModel": "small",
+  "keywords": [],
+  "reportLevel": "full",
+  "replyToComments": false,
+  "replyPerRound": 1
+}

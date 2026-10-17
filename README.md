@@ -11,8 +11,9 @@
 - [x] B站 扫码登录（凭证只在本机）
 - [x] 用插件自己的 `bili_run` 真跑通一轮：`code=0`，报告写出来了
 - [x] 桌面版那几个「跑不起来」的坑修掉（0.1.6，在 fork 的分支上）
-- [ ] 自己的仓库结构 / 配置
-- [ ] SQLite 替掉 `seen.md`
+- [x] 自己的仓库结构 / 配置
+- [x] SQLite schema（建库脚本可跑；插件还没接上）
+- [ ] SQLite 替掉 `seen.md`（要改插件宿主半）
 - [ ] 加密凭据库
 - [ ] 通知（跑完/失败推给我）
 
@@ -29,10 +30,20 @@ autowhale/
 
 | 目录 | 放什么 |
 |---|---|
-| `config/` | 我自己的关键词、条数、@ 名单等（可从 `config.example.json` 抄） |
+| `config/` | 我自己的关键词、条数、@ 名单等（`autowhale.json` 是当前在用的那份） |
+| `db/` | `schema.sql`：rounds / videos / comments / transcripts / events 五张表 |
+| `scripts/` | 一次性工具（`init-db.mjs` 建库、迁移、对账、导出） |
 | `charter/` | 我改过的值班章程（插件支持用「比它新」的那份） |
 | `docs/` | 决策记录、踩坑、每轮日报的索引 |
-| `scripts/` | 一次性工具（迁移、对账、导出） |
+
+## 本地库
+
+```bash
+node scripts/init-db.mjs      # 建 data/autowhale.db（Node ≥ 22.5，DSH 自带 Node 24 即可）
+```
+
+`data/` 不进仓库。表结构见 `db/schema.sql`：每轮、看过的视频、发过的评论（含复核）、
+字幕原文、审计事件 —— 以后 `seen.md` 只是给眼睛看的导出，真相在库里。
 
 ## 不放进来的东西
 
